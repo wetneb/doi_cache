@@ -32,11 +32,15 @@ def get_doi(request, doi):
         metadata = fetch_metadata_by_doi(doi)
         if metadata is not None:
             return HttpResponse(metadata)
+        else:
+            return HttpResponse('null')
 
 @csrf_exempt
 def get_batch(request):
     try:
         ids = json.loads(request.POST.get("dois", "[]"))
+        if len(ids) > MAX_BATCH_LENGTH:
+            raise ValueError('DOI list is too long (length: %d, max: %d)' % (len(ids), MAX_BATCH_LENGTH))
         dois = [str(x)[:MAX_DOI_LENGTH] for x in ids]
         records_list = Record.objects.filter(doi__in=dois)
         records_dct = {r.doi:r for r in records_list}

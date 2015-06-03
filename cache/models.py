@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from django.db import models
 
 MAX_DOI_LENGTH = 2048
+MAX_BATCH_LENGTH = 512
 
 class Record(models.Model):
     doi = models.CharField(max_length=MAX_DOI_LENGTH, unique=True)
