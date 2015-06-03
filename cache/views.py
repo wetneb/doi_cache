@@ -27,11 +27,11 @@ def get_doi(request, doi):
     # Look up DOI in database
     try:
         r = Record.objects.get(doi=doi)
-        return HttpResponse(r.body)
+        return HttpResponse(r.body, content_type='application/json')
     except Record.DoesNotExist:
         metadata = fetch_metadata_by_doi(doi)
         if metadata is not None:
-            return HttpResponse(metadata)
+            return HttpResponse(metadata, content_type='application/json')
 
 @csrf_exempt
 def get_batch(request):
@@ -51,7 +51,7 @@ def get_batch(request):
             else:
                 results.append(fetch_metadata_by_doi(doi))
         # TODO: insert the records in one request
-        return HttpResponse(json.dumps(results))
+        return HttpResponse(json.dumps(results), content_type='application/json')
 
     except ValueError:
         return HttpResponse('Bad DOI list',status=400)
