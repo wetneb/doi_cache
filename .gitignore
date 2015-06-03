@@ -1,0 +1,15 @@
+# Database
+db.sqlite3
+
+# Django stuff
+www/
+runfcgi.pid
+start.sh
+.virtualenv/
+
+# Vim files
+*.swp
+
+# Compiled python
+*.pyc
+
