@@ -10,13 +10,13 @@ def fetch_metadata_by_doi(doi, record=None):
     headers = {'Accept':'application/citeproc+json'}
     try:
         req = requests.get('http://dx.doi.org/'+doi, headers=headers)
-        json = req.json()
+        json_data = req.json()
         metadata = req.text
         if record is None or record.doi != doi:
             record, created = Record.objects.get_or_create(doi=doi)
         record.body = metadata
         record.save()
-        return json
+        return json_data
     except ValueError, requests.exceptions.RequestException:
         return None
 
@@ -31,7 +31,7 @@ def get_doi(request, doi):
     except Record.DoesNotExist:
         metadata = fetch_metadata_by_doi(doi)
         if metadata is not None:
-            return HttpResponse(metadata, content_type='application/json')
+            return HttpResponse(json.dumps(metadata), content_type='application/json')
         else:
             return HttpResponse('null')
 
