@@ -16,7 +16,7 @@ def fetch_metadata_by_doi(doi, record=None):
             record, created = Record.objects.get_or_create(doi=doi)
         record.body = metadata
         record.save()
-        return req.text
+        return json
     except ValueError, requests.exceptions.RequestException:
         return None
 
