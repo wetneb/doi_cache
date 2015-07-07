@@ -60,3 +60,7 @@ def get_batch(request):
     except ValueError:
         return HttpResponse('Bad DOI list',status=400)
 
+def get_count(request):
+    count = Record.objects.count()
+    return HttpResponse(str(count))
+
