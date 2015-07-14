@@ -28,15 +28,17 @@ def fetch_zotero_by_doi(doi, record=None):
         url_req = requests.get('http://dx.doi.org/'+doi)
         new_url = url_req.url
         zotero_data = {'url':new_url,
-                'sessionid':binascii.hexlify(os.random(8)),
+                'sessionid':binascii.hexlify(os.urandom(8)),
                 'apikey':ZOTERO_API_KEY}
-        r = requests.get(ZOTERO_ENDPOINT, headers=headers, data=json.dumps(zotero_data))
-        json = r.json()
+        print zotero_data
+        r = requests.post(ZOTERO_ENDPOINT, headers=headers, data=json.dumps(zotero_data))
+        print r.text
+        json_resp = r.json()
         if record is None or record.doi != 'zotero/'+doi:
             record, created = Record.objects.get_or_create(doi='zotero/'+doi)
         record.body = r.text
         record.save()
-        return json
+        return json_resp
     except ValueError, requests.exceptions.RequestException:
         return None
 
@@ -91,7 +93,7 @@ def get_zotero(request, doi):
     except Record.DoesNotExist:
         metadata = fetch_zotero_by_doi(doi)
         if metadata is not None:
-            return HttpResponse(metadata, content_type='application/json')
+            return HttpResponse(json.dumps(metadata), content_type='application/json')
         else:
             return HttpResponse('null')
 
