@@ -7,5 +7,6 @@ from cache.views import *
 urlpatterns = patterns('',
         url(r'^batch$', get_batch, name='get_batch'),
         url(r'^(?P<doi>10\..*)', get_doi, name='get_doi'),
+        url(r'^zotero/(?P<doi>10\..*)', get_zotero, name='get_zotero'),
 )
 
