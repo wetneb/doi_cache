@@ -30,9 +30,7 @@ def fetch_zotero_by_doi(doi, record=None):
         zotero_data = {'url':new_url,
                 'sessionid':binascii.hexlify(os.urandom(8)),
                 'apikey':ZOTERO_API_KEY}
-        print zotero_data
         r = requests.post(ZOTERO_ENDPOINT, headers=headers, data=json.dumps(zotero_data))
-        print r.text
         json_resp = r.json()
         if record is None or record.doi != 'zotero/'+doi:
             record, created = Record.objects.get_or_create(doi='zotero/'+doi)
