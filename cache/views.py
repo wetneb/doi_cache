@@ -37,7 +37,7 @@ def fetch_zotero_by_doi(doi, record=None):
         record.body = r.text
         record.save()
         return json_resp
-    except ValueError, requests.exceptions.RequestException:
+    except (ValueError, requests.exceptions.RequestException, TypeError):
         return None
 
 def get_doi(request, doi):
@@ -55,6 +55,23 @@ def get_doi(request, doi):
         else:
             return HttpResponse('null')
 
+def _get_batch(dois, verbose=False):
+    records_list = Record.objects.filter(doi__in=dois)
+    records_dct = {r.doi:r for r in records_list}
+    results = []
+    for doi in dois:
+        if verbose:
+            print doi
+        if doi in records_dct:
+            body = records_dct[doi].body
+            try:
+                results.append(json.loads(body))
+            except ValueError:
+                results.append(None)
+        else:
+            results.append(fetch_metadata_by_doi(doi))
+    return results
+
 @csrf_exempt
 def get_batch(request):
     try:
@@ -62,18 +79,7 @@ def get_batch(request):
         if len(ids) > MAX_BATCH_LENGTH:
             raise ValueError('DOI list is too long (length: %d, max: %d)' % (len(ids), MAX_BATCH_LENGTH))
         dois = [str(x)[:MAX_DOI_LENGTH] for x in ids]
-        records_list = Record.objects.filter(doi__in=dois)
-        records_dct = {r.doi:r for r in records_list}
-        results = []
-        for doi in dois:
-            if doi in records_dct:
-                body = records_dct[doi].body
-                try:
-                    results.append(json.loads(body))
-                except ValueError:
-                    results.append(None)
-            else:
-                results.append(fetch_metadata_by_doi(doi))
+        results = _get_batch(dois)
         # TODO: insert the records in one request
         return HttpResponse(json.dumps(results), content_type='application/json')
 
