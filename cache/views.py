@@ -22,6 +22,24 @@ def fetch_metadata_by_doi(doi, record=None):
     except ValueError, requests.exceptions.RequestException:
         return None
 
+def check_pdf_urls(json_resp):
+    for idx, item in enumerate(json_resp):
+        new_attachments = []
+        for attachment in item.get('attachments',[]):
+            if attachment['mimeType'] == 'application/pdf':
+                try:
+                    rh = requests.head(attachment['url'],allow_redirects=True)
+                    if 'pdf' in rh.headers.get('content-type', ''):
+                        new_attachments.append(attachment)
+                except requests.exceptions.RequestException:
+                    pass
+            else:
+                new_attachments.append(attachment)
+        json_resp[idx]['attachments'] = new_attachments
+
+    return json_resp
+
+
 def fetch_zotero_by_doi(doi, record=None):
     headers = {'Content-Type': 'application/json'}
     try:
@@ -32,9 +50,11 @@ def fetch_zotero_by_doi(doi, record=None):
                 'apikey':ZOTERO_API_KEY}
         r = requests.post(ZOTERO_ENDPOINT, headers=headers, data=json.dumps(zotero_data))
         json_resp = r.json()
+        json_resp = check_pdf_urls(json_resp)
+
         if record is None or record.doi != 'zotero/'+doi:
             record, created = Record.objects.get_or_create(doi='zotero/'+doi)
-        record.body = r.text
+        record.body = json.dumps(json_resp)
         record.save()
         return json_resp
     except (ValueError, requests.exceptions.RequestException, TypeError):
