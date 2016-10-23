@@ -1,9 +1,9 @@
 from django.shortcuts import render
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponseForbidden, HttpResponse
 from cache.models import *
 from django.views.decorators.csrf import csrf_exempt
 
-from doi_cache.settings import ZOTERO_ENDPOINT, ZOTERO_API_KEY
+from doi_cache.settings import ZOTERO_ENDPOINT, ZOTERO_API_KEY, ZOTERO_ENDPOINT_API_KEYS
 
 import requests
 import json, os, binascii
@@ -39,11 +39,11 @@ def check_pdf_urls(json_resp):
 
     return json_resp
 
-
-def fetch_zotero_by_doi(doi, record=None):
+def fetch_zotero(url, record=None):
     headers = {'Content-Type': 'application/json'}
+    json_resp = None
     try:
-        url_req = requests.get('http://dx.doi.org/'+doi)
+        url_req = requests.get(url)
         new_url = url_req.url
         zotero_data = {'url':new_url,
                 'sessionid':binascii.hexlify(os.urandom(8)),
@@ -52,17 +52,22 @@ def fetch_zotero_by_doi(doi, record=None):
         json_resp = r.json()
         json_resp = check_pdf_urls(json_resp)
 
-        if record is None or record.doi != 'zotero/'+doi:
-            record, created = Record.objects.get_or_create(doi='zotero/'+doi)
-        record.body = json.dumps(json_resp)
-        record.save()
-        return json_resp
     except (ValueError, requests.exceptions.RequestException, TypeError):
-        return None
+        pass
+
+    url = url[:MAX_URL_LENGTH]
+    if record is None or record.url != url:
+        record, created = ZoteroRecord.objects.get_or_create(url=url)
+    record.body = json.dumps(json_resp)
+    record.save()
+    return json_resp
+
+   
 
 def get_doi(request, doi):
     if len(doi) >= MAX_DOI_LENGTH:
         raise Http404('Invalid DOI "'+doi+'"')
+    doi = doi.lower()
 
     # Look up DOI in database
     try:
@@ -76,6 +81,7 @@ def get_doi(request, doi):
             return HttpResponse('null')
 
 def _get_batch(dois, verbose=False):
+    dois = [doi.lower() for doi in dois]
     records_list = Record.objects.filter(doi__in=dois)
     records_dct = {r.doi:r for r in records_list}
     results = []
@@ -106,16 +112,32 @@ def get_batch(request):
     except ValueError:
         return HttpResponse('Bad DOI list',status=400)
 
-def get_zotero(request, doi):
+def get_zotero_doi(request, doi):
     if len(doi) >= MAX_DOI_LENGTH:
         raise Http404('Invalid DOI "'+doi+'"')
+    doi = doi.lower()
+    return get_zotero('http://doi.org/'+doi)
 
+@csrf_exempt
+def get_zotero_url(request):
+    url = request.POST.get('url') or request.GET.get('url')
+    key = request.POST.get('key') or request.GET.get('key')
+    if not key:
+        return HttpResponseForbidden('API key required')
+    if key not in ZOTERO_ENDPOINT_API_KEYS:
+        return HttpResponseForbidden('Invalid API key.')
+    if not url:
+        raise Http404('No URL provided')
+    url = url[:MAX_URL_LENGTH]
+    return get_zotero(url)
+
+def get_zotero(url):
     # Look up DOI in database
     try:
-        r = Record.objects.get(doi="zotero/"+doi)
+        r = ZoteroRecord.objects.get(url=url)
         return HttpResponse(r.body, content_type='application/json')
-    except Record.DoesNotExist:
-        metadata = fetch_zotero_by_doi(doi)
+    except ZoteroRecord.DoesNotExist:
+        metadata = fetch_zotero(url)
         if metadata is not None:
             return HttpResponse(json.dumps(metadata), content_type='application/json')
         else:

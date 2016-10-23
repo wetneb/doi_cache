@@ -13,9 +13,9 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # Zotero settings
-ZOTERO_ENDPOINT = None
-ZOTERO_API_KEY = None
-
+ZOTERO_ENDPOINT = None # endpoint of translation-server to cache
+ZOTERO_API_KEY = None # api key used by the (patched) translation-server
+ZOTERO_ENDPOINT_API_KEYS = set() # allowed api keys for the external Zotero endpoint
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.7/howto/deployment/checklist/
