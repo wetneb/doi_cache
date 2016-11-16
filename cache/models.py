@@ -2,7 +2,7 @@
 from __future__ import unicode_literals
 from django.db import models
 from datetime import timedelta
-from datetime.date import today
+from datetime import datetime
 
 MAX_DOI_LENGTH = 2048
 MAX_BATCH_LENGTH = 512
@@ -14,10 +14,12 @@ class Record(models.Model):
     body = models.TextField(null=True,blank=True)
 
     def is_fresh(self):
-        return self.fetched + timedelta(days=150) > today()
+        return self.fetched.replace(tzinfo=None) + timedelta(days=150) > datetime.utcnow()
 
 class ZoteroRecord(models.Model):
     url = models.CharField(max_length=MAX_URL_LENGTH, unique=True)
     fetched = models.DateTimeField(auto_now=True)
     body = models.TextField(null=True,blank=True)
 
+    def is_fresh(self):
+        return self.fetched.replace(tzinfo=None) + timedelta(days=150) > datetime.utcnow()
