@@ -135,13 +135,16 @@ def get_zotero(url):
     # Look up DOI in database
     try:
         r = ZoteroRecord.objects.get(url=url)
-        return HttpResponse(r.body, content_type='application/json')
+        if r.is_fresh():
+            return HttpResponse(r.body, content_type='application/json')
     except ZoteroRecord.DoesNotExist:
-        metadata = fetch_zotero(url)
-        if metadata is not None:
-            return HttpResponse(json.dumps(metadata), content_type='application/json')
-        else:
-            return HttpResponse('null')
+        pass
+
+    metadata = fetch_zotero(url)
+    if metadata is not None:
+        return HttpResponse(json.dumps(metadata), content_type='application/json')
+    else:
+        return HttpResponse('null')
 
 def get_count(request):
     count = Record.objects.count()
