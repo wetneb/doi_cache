@@ -13,7 +13,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 
 # Zotero settings
-ZOTERO_ENDPOINT = None # endpoint of translation-server to cache
+ZOTERO_ENDPOINT = 'http://localhost:1969/web'
 ZOTERO_API_KEY = None # api key used by the (patched) translation-server
 ZOTERO_ENDPOINT_API_KEYS = set() # allowed api keys for the external Zotero endpoint
 
