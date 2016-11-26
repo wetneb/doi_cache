@@ -31,8 +31,6 @@ def check_pdf_urls(json_resp):
                     rh = requests.head(attachment['url'],allow_redirects=True)
                     if 'pdf' in rh.headers.get('content-type', ''):
                         new_attachments.append(attachment)
-                    else:
-                        new_attachments.append(dict(rh.headers))
                 except requests.exceptions.RequestException:
                     pass
             else:
