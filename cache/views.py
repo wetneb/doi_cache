@@ -19,7 +19,7 @@ def fetch_metadata_by_doi(doi, record=None):
         record.body = metadata
         record.save()
         return json_data
-    except ValueError, requests.exceptions.RequestException:
+    except (ValueError, requests.exceptions.RequestException) as e:
         return None
 
 def check_pdf_urls(json_resp):
