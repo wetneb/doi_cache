@@ -9,7 +9,7 @@ import requests
 import json, os, binascii
 
 def fetch_metadata_by_doi(doi, record=None):
-    headers = {'Accept':'application/citeproc+json'}
+    headers = {'Accept':'application/vnd.citationstyles.csl+json'}
     try:
         req = requests.get('http://dx.doi.org/'+doi, headers=headers)
         json_data = req.json()
@@ -64,7 +64,7 @@ def fetch_zotero(url, record=None):
     record.save()
     return json_resp
 
-   
+
 
 def get_doi(request, doi):
     if len(doi) >= MAX_DOI_LENGTH:
