@@ -22,17 +22,24 @@ def fetch_metadata_by_doi(doi, record=None):
     except (ValueError, requests.exceptions.RequestException) as e:
         return None
 
+def url_is_pdf(url):
+    """
+    Returns a pair: the first boolean is whether the URL is a PDF,
+    the second is the final redirected URL
+    """
+    try:
+        rh = requests.head(url,allow_redirects=True)
+        return ('application/pdf' in rh.headers.get('content-type', ''), rh.url)
+    except requests.exceptions.RequestException:
+        return (False, url)
+
 def check_pdf_urls(json_resp):
     for idx, item in enumerate(json_resp):
         new_attachments = []
         for attachment in item.get('attachments',[]):
             if attachment['mimeType'] == 'application/pdf':
-                try:
-                    rh = requests.head(attachment['url'],allow_redirects=True)
-                    if 'pdf' in rh.headers.get('content-type', ''):
-                        new_attachments.append(attachment)
-                except requests.exceptions.RequestException:
-                    pass
+                if url_is_pdf(attachment['url'])[0]:
+                    new_attachments.append(attachment)
             else:
                 new_attachments.append(attachment)
         json_resp[idx]['attachments'] = new_attachments
@@ -43,16 +50,21 @@ def fetch_zotero(url, record=None):
     headers = {'Content-Type': 'application/json'}
     json_resp = None
     try:
-        url_req = requests.get(url)
-        new_url = url_req.url
-        zotero_data = {'url':new_url,
-                'sessionid':binascii.hexlify(os.urandom(8)),
-                'apikey':ZOTERO_API_KEY}
-        r = requests.post(ZOTERO_ENDPOINT, headers=headers, data=json.dumps(zotero_data))
-        json_resp = r.json()
-        json_resp = check_pdf_urls(json_resp)
+        is_pdf, new_url = url_is_pdf(url)
+        if is_pdf:
+            json_resp = {'attachments':[
+                {'url':new_url,
+                 'mimetype':'application/pdf'}]}
+        else:
+            zotero_data = {'url':new_url,
+                    'sessionid':binascii.hexlify(os.urandom(8)),
+                    'apikey':ZOTERO_API_KEY}
+            r = requests.post(ZOTERO_ENDPOINT, headers=headers, data=json.dumps(zotero_data))
+            json_resp = r.json()
+            json_resp = check_pdf_urls(json_resp)
 
-    except (ValueError, requests.exceptions.RequestException, TypeError):
+    except (ValueError, requests.exceptions.RequestException, TypeError) as e:
+        print(e)
         pass
 
     url = url[:MAX_URL_LENGTH]
@@ -122,6 +134,7 @@ def get_zotero_doi(request, doi):
 def get_zotero_url(request):
     url = request.POST.get('url') or request.GET.get('url')
     key = request.POST.get('key') or request.GET.get('key')
+    force = (request.POST.get('force') or request.GET.get('force')) == 'true'
     if not key:
         return HttpResponseForbidden('API key required')
     if key not in ZOTERO_ENDPOINT_API_KEYS:
@@ -129,22 +142,23 @@ def get_zotero_url(request):
     if not url:
         raise Http404('No URL provided')
     url = url[:MAX_URL_LENGTH]
-    return get_zotero(url)
+    return get_zotero(url, force)
 
-def get_zotero(url):
+def get_zotero(url, force=False):
     # Look up DOI in database
-    try:
-        r = ZoteroRecord.objects.get(url=url)
-        if r.is_fresh():
-            return HttpResponse(r.body, content_type='application/json')
-    except ZoteroRecord.DoesNotExist:
-        pass
+    if not force:
+        try:
+            r = ZoteroRecord.objects.get(url=url)
+            if r.is_fresh():
+                return HttpResponse(r.body, content_type='application/json')
+        except ZoteroRecord.DoesNotExist:
+            pass
 
     metadata = fetch_zotero(url)
     if metadata is not None:
         return HttpResponse(json.dumps(metadata), content_type='application/json')
     else:
-        return HttpResponse('null')
+        return HttpResponse('null', content_type='application/json')
 
 def get_count(request):
     count = Record.objects.count()
